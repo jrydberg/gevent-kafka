@@ -46,6 +46,6 @@ class Producer(object):
     def send(self, messages):
         """Send messages to the topic."""
         broker_id = random.choice(self.brokers.keys())
-        part_no = random.randint(0, self.topic_parts.get(broker_id, 1))
+        part_no = random.randint(0, self.topic_parts.get(broker_id, 1) - 1)
         return self.brokers[broker_id].produce(self.topic_name, part_no,
             messages)

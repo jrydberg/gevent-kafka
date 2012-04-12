@@ -30,6 +30,9 @@ class ConnectionPool(object):
     def put(self, item):
         self.pool.put(item)
 
+    def lose(self, item):
+        self.size -= 1
+
     def closeall(self):
         while not self.pool.empty():
             conn = self.pool.get_nowait()

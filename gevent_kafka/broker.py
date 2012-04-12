@@ -30,11 +30,15 @@ class Broker(object):
             factory=KafkaProtocol)
 
     def _interaction(self, method, *args, **kw):
-        conn = self.pool.get()
-        try:
-            return getattr(conn, method)(*args, **kw)
-        finally:
-            self.pool.put(conn)
+        while True:
+            conn = self.pool.get()
+            if conn.closed:
+                self.pool.lose(conn)
+            else:
+                try:
+                    return getattr(conn, method)(*args, **kw)
+                finally:
+                    self.pool.put(conn)
 
     def offsets(self, topic, partition, time=-1, num_offsets=1):
         return self._interaction('offsets', topic, partition, time,

@@ -155,6 +155,7 @@ class Int32Protocol(object):
         self.readq = Queue()
         self.buf = ''
         self.start()
+        self.closed = False
 
     def write(self, data):
         self.sendq.put(data)
@@ -166,7 +167,9 @@ class Int32Protocol(object):
         while True:
             data = self.socket.recv(4)
             if not data:
-                print "CLOSED"
+                self.closed = True
+                break
+
             size = struct.unpack("!I", data)[0]
 
             # FIXME: Rewrite, optimize!

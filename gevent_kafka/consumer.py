@@ -22,6 +22,8 @@ import zookeeper
 from gevent.queue import Queue
 import gevent
 
+from gevent_zookeeper.monitor import MonitorListener
+
 from gevent_kafka.protocol import OffsetOutOfRangeError
 from gevent_kafka.broker import LATEST, EARLIEST
 from gevent_kafka import broker
@@ -33,7 +35,7 @@ def sleep_interval(t0, t1, interval):
         gevent.sleep(dt)
 
 
-class Rebalancer(object):
+class Rebalancer(MonitorListener):
     """Zookeeper framework listener that rebalances a consumer when
     something changes.
     """
@@ -194,6 +196,7 @@ class ConsumedTopic(object):
                     self.offsets[bpid] += delta
                     self.update_offset(bpid, self.offsets[bpid])
 
+            t1 = self.time()
             sleep_interval(t0, self.time(), self.polling_interval)
 
     def start(self, callback):
