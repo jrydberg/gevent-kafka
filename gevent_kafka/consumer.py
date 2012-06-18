@@ -88,7 +88,7 @@ class ConsumedTopic(object):
                 if self.do_rebalance():
                     break
                 self.log.info('failed to rebalance: will try again soon')
-                gevent.sleep(0.250)
+                gevent.sleep(2)
             else:
                 self.log.error('Failed to rebalance')
 
