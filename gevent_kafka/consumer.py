@@ -70,7 +70,8 @@ class ConsumedTopic(object):
         self.polling_interval = polling_interval
         self.time = time
         self.rebalanceq = Queue()
-        self.log = logging.getLogger('kafka.consumer.' + topic)
+        self.log = logging.getLogger('kafka.consumer.%s:%s' % (
+                consumer.group_id, topic))
         self.retries = retries
 
     def rebalance(self):

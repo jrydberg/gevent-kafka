@@ -107,14 +107,18 @@ def _decode_messages(data):
     length = len(data)
     messages = []
 
-    while data:
+    while len(data) >= 10:
         msgsize, magic, compression, csum = struct.unpack("!IBBI",
             data[:4 + 2 + 4])
-        data = data[10:]
         # Excluding the length:
         msgsize = msgsize - 6
 
-        payload, data = data[:msgsize], data[msgsize:]
+        payload, newdata = data[10:10 + msgsize], data[msgsize + 10:]
+        if len(payload) != msgsize:
+            if not messages:
+                print "first message was cropped! max_size set too small?"
+            break
+        data = newdata
 
         # FIXME: rewrite this.
         if magic and compression == 1:
@@ -127,7 +131,9 @@ def _decode_messages(data):
         else:
             messages.append(payload)
 
-    return messages, length
+    # Return the messages and the number of bytes that we have
+    # consumed.  Any cropped messages will be left in "data".
+    return messages, length - len(data)
 
 
 def _decode_fetch_response(data):
@@ -189,7 +195,6 @@ class Int32Protocol(object):
     def start(self):
         self.reader = gevent.spawn(self._reader)
         self.writer = gevent.spawn(self._writer)
-        
 
 
 class KafkaProtocol(Int32Protocol):
