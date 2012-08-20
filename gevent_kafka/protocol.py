@@ -127,6 +127,7 @@ def _decode_messages(data):
             for message in decompressed:
                 messages.append(message)
         elif magic and compression != 0:
+            raise InvalidMessageError("invalid message")
             print "unsupported compression codec", compression
         else:
             messages.append(payload)

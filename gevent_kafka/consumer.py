@@ -24,7 +24,7 @@ import gevent
 
 from gevent_zookeeper.monitor import MonitorListener
 
-from gevent_kafka.protocol import OffsetOutOfRangeError
+from gevent_kafka.protocol import OffsetOutOfRangeError, InvalidMessageError
 from gevent_kafka.broker import LATEST, EARLIEST
 from gevent_kafka import broker
 
@@ -57,7 +57,7 @@ class ConsumedTopic(object):
     """A consumed topic."""
 
     def __init__(self, framework, consumer, topic, polling_interval=2,
-                 max_size=1048576, retries=3, time=time.time):
+                 max_size=1048576, retries=3, time=time.time, drain=False):
         self.framework = framework
         self.consumer = consumer
         self.topic_name = topic
@@ -73,6 +73,7 @@ class ConsumedTopic(object):
         self.log = logging.getLogger('kafka.consumer.%s:%s' % (
                 consumer.group_id, topic))
         self.retries = retries
+        self.drain = drain
 
     def rebalance(self):
         """Request that the topic should be rebalanced."""
@@ -187,6 +188,10 @@ class ConsumedTopic(object):
             try:
                 messages, delta = broker.fetch(self.topic_name, partno,
                     self.offsets[bpid], self.max_size)
+            except InvalidMessageError:
+                offsets = broker.offsets(self.topic_name, partno, LATEST)
+                self.offsets[bpid] = offsets[-1]
+                continue
             except OffsetOutOfRangeError:
                 offsets = broker.offsets(self.topic_name, partno, EARLIEST)
                 self.offsets[bpid] = offsets[-1]
@@ -196,9 +201,12 @@ class ConsumedTopic(object):
                     self.callback(messages)
                     self.offsets[bpid] += delta
                     self.update_offset(bpid, self.offsets[bpid])
+                else:
+                    if self.drain:
+                        self.drain = False
 
-            t1 = self.time()
-            sleep_interval(t0, self.time(), self.polling_interval)
+            sleep_interval(t0, self.time(),
+                0 if self.drain else self.polling_interval)
 
     def start(self, callback):
         """Start consuming the topic."""
