@@ -19,6 +19,7 @@ According to https://cwiki.apache.org/confluence/display/KAFKA/Wire+Format
 
 import gevent
 from gevent.queue import Queue
+from gevent import socket
 import struct
 import zlib
 import gzip
@@ -151,7 +152,7 @@ def _decode_offsets_response(data):
         value = data[8 * i: 8 * (i + 1)]
         offsets.append(struct.unpack("!Q", value)[0])
     return error_code, offsets
-    
+
 
 class Int32Protocol(object):
     """A simple 32-bit prefixes protocol."""
@@ -165,37 +166,30 @@ class Int32Protocol(object):
         self.closed = False
 
     def write(self, data):
-        self.sendq.put(data)
+        self.socket.sendall(''.join([struct.pack("!I", len(data)),
+                                     data]))
 
     def read(self):
-        return self.readq.get()
+        data = self.socket.recv(4)
+        if not data:
+            raise socket.error('closed')
 
-    def _reader(self):
-        while True:
-            data = self.socket.recv(4)
-            if not data:
-                self.closed = True
-                break
+        size = struct.unpack("!I", data)[0]
 
-            size = struct.unpack("!I", data)[0]
+        # FIXME: Rewrite, optimize!
+        buf = ''
+        while len(buf) != size:
+            data = self.socket.recv(size - len(buf))
+            buf += data
 
-            # FIXME: Rewrite, optimize!
-            buf = ''
-            while len(buf) != size:
-                data = self.socket.recv(size - len(buf))
-                buf += data
-
-            self.readq.put(buf)
-
-    def _writer(self):
-        while True:
-            data = self.sendq.get()
-            self.socket.sendall(''.join([struct.pack("!I", len(data)),
-                data]))
+        return buf
 
     def start(self):
-        self.reader = gevent.spawn(self._reader)
-        self.writer = gevent.spawn(self._writer)
+        """Start the protocol."""
+
+    def close(self):
+        """Close the protocol and socket."""
+        self.socket.close()
 
 
 class KafkaProtocol(Int32Protocol):

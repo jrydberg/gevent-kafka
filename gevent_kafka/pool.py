@@ -4,7 +4,8 @@ from gevent import socket
 
 class ConnectionPool(object):
 
-    def __init__(self, host, port, maxsize=10, factory=lambda x: x):
+    def __init__(self, host, port, maxsize=10, connect_timeout=None,
+                 read_timeout=None, factory=lambda x: x):
         if not isinstance(maxsize, (int, long)):
             raise TypeError('Expected integer, got %r' % (maxsize, ))
         self.maxsize = maxsize
@@ -13,6 +14,8 @@ class ConnectionPool(object):
         self.host = host
         self.port = port
         self.factory = factory
+        self.connect_timeout = connect_timeout
+        self.read_timeout = read_timeout
 
     def get(self):
         pool = self.pool
@@ -32,6 +35,7 @@ class ConnectionPool(object):
 
     def lose(self, item):
         self.size -= 1
+        item.close()
 
     def closeall(self):
         while not self.pool.empty():
@@ -43,4 +47,7 @@ class ConnectionPool(object):
 
     def create_connection(self):
         """Create connection to remote host."""
-        return self.factory(socket.create_connection((self.host, self.port)))
+        sock = socket.create_connection((self.host, self.port),
+                                        timeout=self.connect_timeout)
+        sock.settimeout(self.read_timeout)
+        return self.factory(sock)

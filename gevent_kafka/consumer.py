@@ -20,6 +20,7 @@ import time
 import zookeeper
 
 from gevent.queue import Queue
+from gevent import socket
 import gevent
 
 from gevent_zookeeper.monitor import MonitorListener
@@ -113,8 +114,9 @@ class ConsumedTopic(object):
         self.log.info('rebalance: won %r' % (partitions,))
 
         for to_remove in (set(self.owned) - set(partitions)):
+            self.log.info("stop consuming %s" % (to_remove,))
             # Step 1. Stop consuming the topic.
-            greenlet = self.readers.get(to_remove)
+            greenlet = self.readers.pop(to_remove, None)
             if greenlet is not None:
                 gevent.kill(greenlet)
 
@@ -196,6 +198,8 @@ class ConsumedTopic(object):
                 offsets = broker.offsets(self.topic_name, partno, EARLIEST)
                 self.offsets[bpid] = offsets[-1]
                 continue
+            except (socket.error, socket.timeout, socket.herror), e:
+                self.log.exception("got exception while fetching messages")
             else:
                 if messages:
                     self.callback(messages)

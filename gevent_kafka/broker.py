@@ -15,6 +15,7 @@
 
 from gevent_kafka.protocol import KafkaProtocol
 from gevent_kafka import pool
+from gevent import socket
 
 
 LATEST = -1
@@ -27,18 +28,18 @@ class Broker(object):
     def __init__(self, bid, host, port):
         self.bid = bid
         self.pool = pool.ConnectionPool(host, port,
-            factory=KafkaProtocol)
+            factory=KafkaProtocol, connect_timeout=5, read_timeout=5)
 
     def _interaction(self, method, *args, **kw):
-        while True:
-            conn = self.pool.get()
-            if conn.closed:
-                self.pool.lose(conn)
-            else:
-                try:
-                    return getattr(conn, method)(*args, **kw)
-                finally:
-                    self.pool.put(conn)
+        conn = self.pool.get()
+        try:
+            value = getattr(conn, method)(*args, **kw)
+        except Exception:
+            self.pool.lose(conn)
+            raise
+        else:
+            self.pool.put(conn)
+            return value
 
     def offsets(self, topic, partition, time=-1, num_offsets=1):
         return self._interaction('offsets', topic, partition, time,
