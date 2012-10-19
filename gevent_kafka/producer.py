@@ -39,18 +39,21 @@ class Producer(object):
         be sent.
     """
 
-    def __init__(self, framework, topic, partitioner=None):
+    def __init__(self, framework, topic, partitioner=None,
+                 read_timeout=5, connect_timeout=5):
         self.framework = framework
         self.topic_name = topic
         self.brokers = {}
         self.topic_parts = {}
         self.partitioner = partitioner
+        self.connect_timeout = connect_timeout
+        self.read_timeout = read_timeout
 
     def start(self):
         """Start the producer."""
         self.broker_mon = self.framework.monitor().children().store_into(
-            self.brokers, broker.broker_factory).for_path(
-                    '/brokers/ids')
+            self.brokers, broker.broker_factory, self.connect_timeout,
+            self.read_timeout).for_path('/brokers/ids')
         self.topic_mon = self.framework.monitor().children().store_into(
             self.topic_parts, int).for_path('/brokers/topics/%s' % (
                 self.topic_name))

@@ -75,6 +75,8 @@ class ConsumedTopic(object):
                 consumer.group_id, topic))
         self.retries = retries
         self.drain = drain
+        self.connect_timeout = connect_timeout
+        self.read_timeout = read_timeout
 
     def rebalance(self):
         """Request that the topic should be rebalanced."""
@@ -247,7 +249,8 @@ class Consumer(object):
 
     _STOP_REQUEST = u'stop-request'
 
-    def __init__(self, framework, group_id, consumer_id=None):
+    def __init__(self, framework, group_id, consumer_id=None,
+                 connect_timeout=5, read_timeout=5):
         self.framework = framework
         self.group_id = group_id
         if consumer_id is None:
@@ -260,6 +263,8 @@ class Consumer(object):
         self.znode = None
         self.brokers = {}
         self.rebalanceq = Queue()
+        self.connect_timeout = connect_timeout
+        self.read_timeout = read_timeout
 
     def _rebalance(self):
         # The global rebalancer.
@@ -309,7 +314,8 @@ class Consumer(object):
 
         # Step 3: Start monitoring for brokers.
         self.framework.monitor().children().using(Rebalancer(
-                self)).store_into(self.brokers, broker.broker_factory).for_path(
+                self)).store_into(self.brokers, broker.broker_factory,
+                     self.connect_timeout, self.read_timeout).for_path(
             '/brokers/ids')
 
         # Step 4: Start the global rebalance greenlet.

@@ -25,10 +25,11 @@ EARLIEST = -2
 class Broker(object):
     """Representation of a broker."""
 
-    def __init__(self, bid, host, port):
+    def __init__(self, bid, host, port, connect_timeout, read_timeout):
         self.bid = bid
         self.pool = pool.ConnectionPool(host, port,
-            factory=KafkaProtocol, connect_timeout=5, read_timeout=5)
+            factory=KafkaProtocol, connect_timeout=connect_timeout,
+            read_timeout=read_timeout)
 
     def _interaction(self, method, *args, **kw):
         conn = self.pool.get()
@@ -54,6 +55,6 @@ class Broker(object):
             messages)
 
 
-def broker_factory(hostport):
+def broker_factory(hostport, connect_timeout, read_timeout):
     _id, host, port = hostport.split(':')
-    return Broker(_id, host, int(port))
+    return Broker(_id, host, int(port), connect_timeout, read_timeout)
