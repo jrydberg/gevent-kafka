@@ -75,8 +75,6 @@ class ConsumedTopic(object):
                 consumer.group_id, topic))
         self.retries = retries
         self.drain = drain
-        self.connect_timeout = connect_timeout
-        self.read_timeout = read_timeout
 
     def rebalance(self):
         """Request that the topic should be rebalanced."""
